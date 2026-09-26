@@ -32,8 +32,11 @@
         <button class="adv fn" id="btn-mod"  onclick="setOp('modulo')">mod</button>
         <button class="adv fn" id="btn-pow"  onclick="setOp('power')">x<sup style="font-size:10px">y</sup></button>
         <button class="adv fn" id="btn-sqrt" onclick="doSqrt()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 12 7 19 12 4 17 19 21 12"/>
+            <svg width="20" height="18" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <!-- tick going down then up (radical symbol) -->
+                <polyline points="2,11 6,18 11,2 27,2"/>
+                <!-- overline on top of the radicand -->
+                <line x1="11" y1="2" x2="27" y2="2"/>
             </svg>
         </button>
         <button class="adv fn" id="btn-hist" onclick="toggleHistory()" title="History">

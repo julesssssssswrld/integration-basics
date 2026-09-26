@@ -197,4 +197,4 @@ async function checkStatus() {
 }
 
 checkStatus();
-setInterval(checkStatus, 1000);
+setInterval(checkStatus, 60000);
