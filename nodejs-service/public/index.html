@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A clean calculator powered by Node.js and Python integration.">
+    <title>Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="status-tray">
+    <div class="status-badge" id="nodebadge">
+        <span class="badge-dot" id="nodeDot"></span>
+        Node.js
+    </div>
+    <div class="status-badge" id="pybadge">
+        <span class="badge-dot" id="pyDot"></span>
+        Python
+    </div>
+</div>
+
+<div class="calculator">
+    <div class="display">
+        <div class="expression" id="expression"></div>
+        <div class="result" id="result">0</div>
+    </div>
+
+    <div class="grid">
+        <button class="adv fn" id="btn-mod"  onclick="setOp('modulo')">mod</button>
+        <button class="adv fn" id="btn-pow"  onclick="setOp('power')">x<sup style="font-size:10px">y</sup></button>
+        <button class="adv fn" id="btn-sqrt" onclick="doSqrt()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 12 7 19 12 4 17 19 21 12"/>
+            </svg>
+        </button>
+        <button class="adv fn" id="btn-hist" onclick="toggleHistory()" title="History">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+        </button>
+
+        <div class="row-divider"></div>
+
+        <button class="fn clear" id="btn-ac"   onclick="clearAll()">AC</button>
+        <button class="fn"       id="btn-sign" onclick="toggleSign()">+/−</button>
+        <button class="fn"       id="btn-pct"  onclick="percent()">%</button>
+        <button class="op"       id="btn-div"  onclick="setOp('divide')">÷</button>
+
+        <button id="btn-7" onclick="digit('7')">7</button>
+        <button id="btn-8" onclick="digit('8')">8</button>
+        <button id="btn-9" onclick="digit('9')">9</button>
+        <button class="op" id="btn-mul" onclick="setOp('multiply')">×</button>
+
+        <button id="btn-4" onclick="digit('4')">4</button>
+        <button id="btn-5" onclick="digit('5')">5</button>
+        <button id="btn-6" onclick="digit('6')">6</button>
+        <button class="op" id="btn-sub" onclick="setOp('subtract')">−</button>
+
+        <button id="btn-1" onclick="digit('1')">1</button>
+        <button id="btn-2" onclick="digit('2')">2</button>
+        <button id="btn-3" onclick="digit('3')">3</button>
+        <button class="op" id="btn-add" onclick="setOp('add')">+</button>
+
+        <button class="zero" id="btn-0"  onclick="digit('0')">0</button>
+        <button              id="btn-dot" onclick="decimal()">.</button>
+        <button class="equals" id="btn-eq" onclick="calculate()">=</button>
+    </div>
+</div>
+
+<div class="history-panel" id="historyPanel">
+    <div class="history-header">
+        <h2>History</h2>
+        <div class="history-header-actions">
+            <button class="icon-btn danger" id="btn-clear-hist" onclick="clearHistory()" title="Clear history">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+            </button>
+            <button class="icon-btn" id="btn-close-hist" onclick="toggleHistory()" title="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div class="history-list" id="historyList"></div>
+</div>
+
+<div class="overlay" id="overlay" onclick="toggleHistory()"></div>
+
+<script>
+    let current = '0';
+    let operand = null;
+    let operator = null;
+    let waitingForSecond = false;
+    let justCalculated = false;
+
+    const resultEl     = document.getElementById('result');
+    const expressionEl = document.getElementById('expression');
+
+    const opSymbols = { add: '+', subtract: '−', multiply: '×', divide: '÷', modulo: 'mod', power: '^' };
+
+    function updateDisplay(val) {
+        resultEl.classList.remove('shrink', 'smaller', 'error');
+        const s = String(val);
+        if (s.length > 12)     resultEl.classList.add('smaller');
+        else if (s.length > 9) resultEl.classList.add('shrink');
+        resultEl.textContent = s;
+    }
+
+    function digit(d) {
+        if (justCalculated)       { current = d; justCalculated = false; }
+        else if (waitingForSecond) { current = d; waitingForSecond = false; }
+        else { current = current === '0' ? d : current + d; }
+        updateDisplay(current);
+    }
+
+    function decimal() {
+        if (waitingForSecond)         { current = '0.'; waitingForSecond = false; }
+        else if (!current.includes('.')) { current += '.'; }
+        updateDisplay(current);
+    }
+
+    function clearAll() {
+        current = '0'; operand = null; operator = null;
+        waitingForSecond = false; justCalculated = false;
+        expressionEl.textContent = '';
+        updateDisplay('0');
+    }
+
+    function toggleSign() {
+        current = String(parseFloat(current) * -1);
+        updateDisplay(current);
+    }
+
+    function percent() {
+        current = String(parseFloat(current) / 100);
+        updateDisplay(current);
+    }
+
+    function setOp(op) {
+        if (operator && !waitingForSecond) calculate(true);
+        operand = parseFloat(current);
+        operator = op;
+        waitingForSecond = true;
+        expressionEl.textContent = `${current} ${opSymbols[op] || op}`;
+        justCalculated = false;
+    }
+
+    async function calculate(chain) {
+        if (operator === null) return;
+        const num2 = parseFloat(current);
+        const num1 = operand;
+        const op   = operator;
+        expressionEl.textContent = `${num1} ${opSymbols[op] || op} ${chain ? '' : num2}`;
+
+        try {
+            const res  = await fetch('/api/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ num1, num2, operation: op })
+            });
+            const data = await res.json();
+            if (data.python_result?.status === 'success') {
+                const r = data.python_result.result;
+                current = Number.isInteger(r) ? String(r) : parseFloat(r.toFixed(10)).toString();
+                updateDisplay(current);
+            } else {
+                showError(data.python_result?.message || data.error || 'Error');
+            }
+        } catch {
+            showError('Service unavailable');
+        }
+
+        if (!chain) { operator = null; operand = null; waitingForSecond = false; justCalculated = true; }
+        else        { operand = parseFloat(current); waitingForSecond = true; }
+    }
+
+    async function doSqrt() {
+        const num1 = parseFloat(current);
+        expressionEl.textContent = `√(${num1})`;
+        try {
+            const res  = await fetch('/api/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ num1, num2: 0, operation: 'square_root' })
+            });
+            const data = await res.json();
+            if (data.python_result?.status === 'success') {
+                current = parseFloat(data.python_result.result.toFixed(10)).toString();
+                updateDisplay(current);
+            } else {
+                showError(data.python_result?.message || 'Error');
+            }
+        } catch {
+            showError('Service unavailable');
+        }
+        justCalculated = true;
+    }
+
+    function showError(msg) {
+        resultEl.classList.add('error');
+        resultEl.textContent = msg;
+        current = '0';
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key >= '0' && e.key <= '9') digit(e.key);
+        else if (e.key === '.')                           decimal();
+        else if (e.key === '+')                           setOp('add');
+        else if (e.key === '-')                           setOp('subtract');
+        else if (e.key === '*')                           setOp('multiply');
+        else if (e.key === '/') { e.preventDefault();    setOp('divide'); }
+        else if (e.key === 'Enter' || e.key === '=')     calculate();
+        else if (e.key === 'Escape')                     clearAll();
+        else if (e.key === 'Backspace') {
+            current = current.length > 1 ? current.slice(0, -1) : '0';
+            updateDisplay(current);
+        }
+    });
+
+    function toggleHistory() {
+        const panel   = document.getElementById('historyPanel');
+        const overlay = document.getElementById('overlay');
+        const isOpen  = panel.classList.contains('open');
+        if (isOpen) {
+            panel.classList.remove('open');
+            overlay.classList.remove('open');
+        } else {
+            loadHistory();
+            panel.classList.add('open');
+            overlay.classList.add('open');
+        }
+    }
+
+    async function loadHistory() {
+        const list = document.getElementById('historyList');
+        list.innerHTML = '<div class="history-empty">Loading…</div>';
+        try {
+            const rows = await fetch('/api/history').then(r => r.json());
+            if (!rows.length) {
+                list.innerHTML = '<div class="history-empty">No history yet.</div>';
+                return;
+            }
+            list.innerHTML = rows.map(r => `
+                <div class="history-item">
+                    <div class="expr">${r.num1} ${opSymbols[r.operation] || r.operation} ${r.num2}</div>
+                    <div class="value ${r.status === 'error' ? 'is-error' : ''}">${r.result}</div>
+                    <div class="timestamp">${new Date(r.timestamp).toLocaleString()}</div>
+                </div>
+            `).join('');
+        } catch {
+            list.innerHTML = '<div class="history-empty" style="color:#dc2626">Failed to load.</div>';
+        }
+    }
+
+    async function clearHistory() {
+        try {
+            await fetch('/api/history/clear', { method: 'DELETE' });
+            document.getElementById('historyList').innerHTML = '<div class="history-empty">No history yet.</div>';
+        } catch {
+            alert('Failed to clear history.');
+        }
+    }
+
+    async function checkStatus() {
+        const nodeDot   = document.getElementById('nodeDot');
+        const nodeBadge = document.getElementById('nodebadge');
+        const pyDot     = document.getElementById('pyDot');
+        const pyBadge   = document.getElementById('pybadge');
+
+        try {
+            const data     = await fetch('/api/status').then(r => r.json());
+            const pythonOk = typeof data.python === 'object' && data.python.status;
+
+            nodeDot.className   = 'badge-dot online';
+            nodeBadge.className = 'status-badge online';
+
+            pyDot.className   = 'badge-dot ' + (pythonOk ? 'online' : 'error');
+            pyBadge.className = 'status-badge' + (pythonOk ? ' online' : '');
+        } catch {
+            nodeDot.className   = 'badge-dot error';
+            nodeBadge.className = 'status-badge';
+
+            pyDot.className   = 'badge-dot';
+            pyBadge.className = 'status-badge';
+        }
+    }
+
+    checkStatus();
+    setInterval(checkStatus, 1000);
+</script>
+</body>
+</html>

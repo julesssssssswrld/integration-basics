@@ -1,0 +1,13 @@
+# Node
+nodejs-service/node_modules/
+nodejs-service/history.csv
+
+# Python
+python-service/__pycache__/
+python-service/*.pyc
+*.pyc
+__pycache__/
+
+# Misc
+.env
+*.log
